@@ -968,8 +968,6 @@ error_sliding6_sqrt = sum(error_sliding6_sqrt)/len(error_sliding6_sqrt)
 sumerror = error_sliding2_abs+error_sliding4_abs # total error
 ew1 = error_sliding2_abs/sumerror #LSTM constribution to error 
 ew2 = error_sliding4_abs/sumerror  #R_DA contribution to error
-
-#print(w1,w2)
 m_avg = df_sliding['R_DA']*ew1 + df_sliding['N_conf_input']*ew2
 
 #Model Average2
