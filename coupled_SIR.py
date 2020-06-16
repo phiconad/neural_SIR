@@ -58,7 +58,7 @@ def load_globaldata(country_selector = 'United Kingdom'):
 
     #inital Wuhan Data estimate
     if 1:
-        df_wuhan = df # select wuhan dataset
+        df_wuhan = df # optional: select wuhan dataset
         df_global = df_wuhan.reindex(range(0,len(df_conf)))
 
         df_global.index = df_conf.index
@@ -88,7 +88,6 @@ def SIR_model_ratio(y,t,beta,gamma):
     
     return(dS_dt, dI_dt, dR_dt)
 
-
 # get a prior for observation noise matrix R
 def initial_R(observation):
     obs = observation #in our case infected people
@@ -110,17 +109,14 @@ def initial_R(observation):
         print('p-value: %f' % result[1])
 
         #check for optimal lag order and estimate arma
-        #res = sm.tsa.arma_order_select_ic(I0_obs, ic=['aic', 'bic'], trend='nc')
         arma_mod10 = sm.tsa.ARMA(I0_obs, (1,0)).fit(disp=False)
         print(arma_mod10.params)
 
         #get residual covariace matrix
-        #arma_mod10.__dir__()
         errors = arma_mod10.resid
         R_estimate = np.var(errors)
 
-        return(R_estimate)
-    
+        return(R_estimate)    
     #multivariate var
     def var_test():
         pass
@@ -128,9 +124,6 @@ def initial_R(observation):
     R_estimate = arma_test(observation=I0_obs)
 
     return(R_estimate)
-
-
-#R_estimate = initial_R(observation = N_confirmed)
 
 def initial_R_ratio(observation):
     obs = observation #in our case infected people
@@ -147,17 +140,13 @@ def initial_R_ratio(observation):
 
     I0_rates = relative_growth(obs=I1_obs)
 
-
     #univariate arma
     def arma_test(observation):
-        
         I0_obs = observation
-
         #check for stationarity
         result = adfuller(I0_obs)
         print('ADF Statistic: %f' % result[0])
         print('p-value: %f' % result[1])
-
         #check for optimal lag order and estimate arma
         arma_mod10 = sm.tsa.ARMA(I0_obs, (1,0)).fit(disp=False)
         print(arma_mod10.params)
@@ -175,7 +164,6 @@ def initial_R_ratio(observation):
     R_estimate = arma_test(observation=I0_rates)
 
     return(R_estimate)
-
 
 # #create state vector
 def build_ensemble(X_b,N):
@@ -202,9 +190,6 @@ def build_ensemble(X_b,N):
     return(V_ens, B_star)
 
 #run function for empirical X_b
-#V_DA,B_DA = build_ensemble(X_b,N=9)
-
-
 #generate state vector from single ODE
 t=range(200)
 def generate_SIR_data(S0,I0,R0,N0,beta0,gamma0,t):
@@ -220,7 +205,6 @@ def generate_SIR_data_ratio(S0,I0,R0,beta0,gamma0,t):
     solution = np.array(solve)
 
     return(solution) 
-
 
 #generate ensemble from a beta and gamma grid
 gamma_list = np.linspace(0.01,1,10) # unlikely that gamma is above 1, would mean infected get removed in less than  a day
@@ -276,8 +260,7 @@ def ensemble_cov_ratio(SIR_conditions,gamma_list,beta_list,ens_size,timesteps):
 
     return(B_avg)
 
-
-#Load wuhan data
+#Optional: Load wuhan data
 if 1:
     #os.chdir("...")
     df = pd.read_csv('data/DXY/wuhan_history.csv')
@@ -319,7 +302,6 @@ if 1:
     S0 = N0-I0-R0
     SIR_conditions = S0, I0, R0, N0
 
-
 #Run Covariance Functions
 #estimate R:
 R_prior = initial_R(observation = N_confirmed)
@@ -338,17 +320,15 @@ Q_prior_ratio = ensemble_cov_ratio(SIR_conditions_ratio,gamma_list,beta_list,ens
 #%%
 #Run Country Configuration
 
-#Load wuhan data
+#Optional: Load wuhan data
 #os.chdir("...")
 df = pd.read_csv('data/DXY/wuhan_history.csv')
 N_confirmed = df['cum_confirm'].values 
-
 #set initial conditions
 N0 = 11.08e6
 R0 = N_confirmed[0]
 I0 = 131
 #I0 = 1700
-
 S0 = N0-I0-R0
 SIR_conditions = S0, I0, R0, N0
 
@@ -379,10 +359,6 @@ if 1:
     S0 = N0-I0-R0
     SIR_conditions = S0, I0, R0, N0
 
-
-
-
-
 #estimate R:
 R_prior = initial_R(observation = N_confirmed)
 R_prior_ratio = initial_R_ratio(observation = N_confirmed)
@@ -393,15 +369,11 @@ beta_list = np.linspace(0.01,1.5,15)
 ens_size = 20
 
 Q_prior = ensemble_cov(SIR_conditions,gamma_list,beta_list,ens_size,timesteps=range(0,200))
-
 SIR_conditions_ratio = S0/N0, I0/N0, R0/N0, N0/N0
 Q_prior_ratio = ensemble_cov_ratio(SIR_conditions_ratio,gamma_list,beta_list,ens_size,timesteps=range(0,200))
 
-
-
 #%%
 #SIR Filtering
-
 def SIR_model(y, t, beta, gamma, N0):
     S, I, R = y
     dS_dt = -beta*S*I/N0
@@ -409,19 +381,16 @@ def SIR_model(y, t, beta, gamma, N0):
     dR_dt = gamma*I
     return dS_dt, dI_dt, dR_dt
 
-
 def pred_SIR(S0, I0, R0, beta, gamma, days):
     N0 = S0+I0+R0
     x_pred = scipy.integrate.odeint(SIR_model, [S0, I0, R0], days, args=(beta, gamma, N0))
     S_pred, I_pred, R_pred = x_pred[:, 0], x_pred[:, 1], x_pred[:, 2]
     return S_pred, I_pred, R_pred
 
-
 def pred_next_SIR(S0, I0, R0, beta, gamma):
     tmp = pred_SIR(S0, I0, R0, beta, gamma, [0, 1])
     S1, I1, R1 = tmp[0][1], tmp[1][1], tmp[2][1]
     return S1, I1, R1
-
 
 def create_F(I, S, N0, beta, gamma):
     F = np.zeros(shape=(3, 3))
@@ -432,8 +401,6 @@ def create_F(I, S, N0, beta, gamma):
     F[2, 1] = gamma
     F += np.identity(3)
     return F
-
-
 
 def calibrate_beta_gamma(x00, x11, beta00, gamma00, ndiv=5000): #ndiv gridsearch #ndiv=100
     S00, I00, R00 = x00
@@ -450,8 +417,6 @@ def calibrate_beta_gamma(x00, x11, beta00, gamma00, ndiv=5000): #ndiv gridsearch
     idm, idn = np.unravel_index(np.argmin(grid_err, axis=None), grid_err.shape) #argmin tells minimum. idnxidn scalar coordinate
     return grid_beta[idm, idn], 1/grid_D[idm, idn]
 
-
-
 def plot_fit(S0, I0, R0, beta, gamma, days, N_confirmed):
     dd = np.linspace(0, days[-1], 1000)
     S_pred, I_pred, R_pred = pred_SIR(S0, I0, R0, beta, gamma, dd)
@@ -467,8 +432,7 @@ def plot_fit(S0, I0, R0, beta, gamma, days, N_confirmed):
 
     return fig
 
-
-#Load wuhan data
+#optional: Load wuhan data
 if 1:
     df = pd.read_csv('data/DXY/wuhan_history.csv')
     days = np.arange(0, len(df))
@@ -479,9 +443,7 @@ if 1:
     # whole data
     days_train, confirmed_train = days, N_confirmed
     days_train = days_train-days_train[0]
-
     #https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/2019-nCoV-outbreak-report-17-01-2020.pdf
-
     #example case Wuhan:
     #country_selector='Wuhan'
     N0 = 58e6 #hubei
@@ -498,10 +460,8 @@ if 1:
     I00, S00, R00, beta00, gamma00 = I0, S0, R0, beta0, gamma0
     x00 = np.array([S0, I0, R0])
 
-    R_mat = np.diag([280])  # 
+    R_mat = np.diag([280])  
     Q_mat = np.diag([0.1, 0.1, 0.1])
-    #P00 = np.diag([0.5, 0.5, 0.5]) 
-    #Q_mat = B_avg
     P00 = np.copy(Q_mat)
 
 #prior covariances
@@ -509,9 +469,6 @@ if 1:
 
     R_mat = R_prior_ratio
     Q_mat = Q_prior_ratio
-    #P00 = np.diag([0.5, 0.5, 0.5]) 
-    #Q_mat = B_avg
-    #P00 = np.copy(Q_mat)
     P00 = np.diag([1, 1, 1]) 
 
 #other countries
@@ -550,11 +507,8 @@ if 1:
     I00, S00, R00, beta00, gamma00 = I0, S0, R0, beta0, gamma0
     x00 = np.array([S0, I0, R0])
 
-
-
 # observation matrix
 H = np.array([[0, 0, 1]])
-
 
 I_DA_alt = np.zeros_like(days, dtype=np.float)
 I10_DA_alt = np.zeros_like(days, dtype=np.float)
@@ -586,9 +540,7 @@ R21_DA_noupdate = np.append(np.zeros_like(days, dtype=np.float),0)
 S21_DA_noupdate = np.append(np.zeros_like(days, dtype=np.float),0)
 
 #t+q forecast # out of sample forecasting
-q=5 #300
-
-
+q=5 
 
 forecast_horizon = np.zeros(q)
 
@@ -608,9 +560,6 @@ beta00_DA = np.append(beta00_DA ,forecast_horizon)
 gamma00_DA = np.append(gamma00_DA,forecast_horizon)
 
 # I_DA_alt[day], I10_DA_alt[day], R_DA_alt[day], R10_DA_alt[day]
-
-
-
 R10_DA_alt = np.append(R10_DA_alt,forecast_horizon)
 I_DA_alt = np.append(I_DA_alt,forecast_horizon)
 R_DA_alt = np.append(R_DA_alt,forecast_horizon)
@@ -689,8 +638,6 @@ for day, confirmed in tqdm(zip(days_train_m, confirmed_train_m)):
         #take current observation and use new gamma to extrapolate
         y11_tilde = z_t+gamma11*I11
 
-
-
         #save results
         I_DA_alt[day], I10_DA_alt[day], R_DA_alt[day], R10_DA_alt[day] = I11_update , I10_update, R11_update, R10_update
         ###########end generate value without updates
@@ -707,7 +654,6 @@ for day, confirmed in tqdm(zip(days_train_m, confirmed_train_m)):
         S00, I00, R00 = x00
         beta00, gamma00 = beta11, gamma11
 
-
 #construct gamma based forecast
 zt1 = N_confirmed_fc+ I_DA*gamma_DA
 zt1
@@ -721,7 +667,6 @@ R_DAN = R_DA[:-q]
 SIR_dict = {'S':S_DAN, 'I':I_DAN, 'R':R_DAN, 'N_conf':N_confirmed_df.values}
 
 df_all = pd.DataFrame(data = SIR_dict, index=N_confirmed_df.index)
-
 
 #%%
 #Univariate LSTM training
@@ -740,15 +685,9 @@ test = x_train[cut:]
 #use sklearn scaler
 scaler = MinMaxScaler()
 scaler.fit(train)
-
 scaled_train = scaler.transform(train)
 scaled_test = scaler.transform(test)
 
-#PN kann ich die zwei zeilen loeschen?
-n_input = 5
-n_features = 1
-generator = TimeseriesGenerator(data= scaled_train,targets=scaled_train,length=n_input,batch_size=1)
-x,y = generator[35]
 
 #model setup
 model = Sequential()
@@ -770,7 +709,7 @@ model.fit_generator(generator,validation_data=validation_gen,epochs=100,callback
 pd.DataFrame(model.history.history).plot(title="loss vs epochs curve")
 
 #out of sample prediciton
-## holding predictions
+# holding predictions
 test_prediction = []
 
 ##last n points from training set
@@ -795,18 +734,14 @@ for k in range(0,lstm_fc):
     time_series_array = time_series_array.append(time_series_array[-1:] + pd.DateOffset(1))
 
 df_forecast = pd.DataFrame(columns=["confirmed","confirmed_predicted"],index=time_series_array)
-
 df_forecast.loc[:,"confirmed_predicted"] = true_prediction[:,0]
 df_forecast.loc[:,"confirmed"] = N_confirmed_df
 
 #show held-out data
-#df_global_select = df_global[['cum_confirm','cum_dead','cum_heal']]
 df_global_select = df_global[['cum_confirm']]
 df_global_select = df_global_select.sum(axis=1).tail(10)
 df_global_select.index = pd.to_datetime(df_global_select.index)
-
 df_global_select[-hold_out_test-1:]
-
 df_forecast['confirmed_holdout'] = df_global_select[-hold_out_test-1:]
 
 MAPE = np.mean(np.abs(np.array(df_forecast["confirmed"][:5]) - np.array(df_forecast["confirmed_predicted"][:5]))/np.array(df_forecast["confirmed"][:5]))
@@ -830,25 +765,16 @@ if 1 :
     for i in range(len(N_confirmed)+lstm_fc):
 
         if i < len(scaled_train)-n_input:
-        #print(i)
         first_eval_batch = scaled_train[i:i+n_input] #"last batch"
-        #print(np.shape(first_eval_batch))
-        #print(first_eval_batch)
         current_batch = first_eval_batch.reshape(1,n_input,n_features)
-        #current_batch = first_eval_batch.reshape(1,np.shape(first_eval_batch)[0],np.shape(first_eval_batch)[1])
 
-        
         current_pred = model.predict(current_batch)[0]
-        #print(current_pred)
         test_prediction.append(current_pred)
         current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
         #at the end of the sample advance the last batch and move forwad
-        
         else:
         #current_batch
         current_pred = model.predict(current_batch)[0]
-        #print(i)
-        #print(current_batch)
         test_prediction.append(current_pred)
         current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
 
@@ -858,7 +784,6 @@ if 1 :
     df_sliding.index = N_confirmed_df.index
 
     df_sliding['N_conf'] = N_confirmed_df
-
     lstm_uni_n_conf = df_sliding.iloc[:,0:1]
 
     #error estimate
@@ -907,7 +832,6 @@ model.summary()
 #create validation set
 validation_set = np.append(scaled_train[-1],scaled_test)
 validation_set = validation_set.reshape(n_input+1,n_features)
-
 n_input = 5
 n_features_val = 1
 validation_gen = TimeseriesGenerator(data= validation_set,targets=validation_set,length=n_input,batch_size=1)
@@ -916,50 +840,39 @@ validation_gen = TimeseriesGenerator(data= validation_set,targets=validation_set
 early_stop = EarlyStopping(monitor='val_loss',patience=20,restore_best_weights=True)
 x1,y1 = validation_gen[11]
 model.fit_generator(generator,validation_data=validation_gen,epochs=100,callbacks=[early_stop],steps_per_epoch=10)
-
-pd.DataFrame(model.history.history).plot(title="loss vs epochs curve")
+#plot training and test accuracy
+#pd.DataFrame(model.history.history).plot(title="loss vs epochs curve")
 
 #create predictions
-# holding predictions
 test_prediction = []
-
 ##last n points from training set
 first_eval_batch = scaled_train[-n_input:] #"last batch"
 current_batch = first_eval_batch.reshape(1,n_input,n_features)
 
-current_batch.shape
-
 for i in range(len(test)+lstm_fc):
-    #print(i)
     current_pred = model.predict(current_batch)[0]
     test_prediction.append(current_pred)
     current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
 
-#transform data back to original, again, we could just standardise by population size
+#transform data back to original
 true_prediction = scaler.inverse_transform(test_prediction)
-
-# variable? 0,1,2,3
 var=3
 true_prediction[:,var] 
 
 #adjust datetime index
 N_confirmed_df.index = pd.to_datetime(N_confirmed_df.index)
-
 time_series_array = N_confirmed_df.iloc[cut:].index
 for k in range(0,lstm_fc):
     time_series_array = time_series_array.append(time_series_array[-1:] + pd.DateOffset(1))
 
 df_forecast = pd.DataFrame(columns=["confirmed","confirmed_predicted"],index=time_series_array)
 
-
 #show held-out data
 df_global_select = df_global[['cum_confirm']]
 df_global_select = df_global_select.sum(axis=1).tail(10)
 
 df_global_select.index = pd.to_datetime(df_global_select.index)
-
 df_global_select[-hold_out_test-1:]
-
 df_forecast['confirmed_holdout'] = df_global_select[-hold_out_test-1:]
 MAPE = np.mean(np.abs(np.array(df_forecast["confirmed"][:5]) - np.array(df_forecast["confirmed_predicted"][:5]))/np.array(df_forecast["confirmed"][:5]))
 print("MAPE is " + str(MAPE*100) + " %")
@@ -973,7 +886,6 @@ if 0:
     plt.plot(df_forecast.index,df_forecast["confirmed_predicted"]/scale,label="confirmed_predicted")
     plt.legend()
     plt.show()
-
 
 #in sample fit
 if 1 :
@@ -1002,12 +914,6 @@ if 1 :
         test_prediction.append(current_pred)
         current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
 
-    #now put predictions into a dataframe
-    if 0:#naively copy index
-        true_prediction = scaler.inverse_transform(test_prediction)
-        df_sliding = pd.DataFrame(true_prediction[:-lstm_fc])
-        df_sliding.index = N_confirmed_df.index
-
     if 1:
         true_prediction = scaler.inverse_transform(test_prediction)
         df_sliding = pd.DataFrame(true_prediction[:-lstm_fc-1])
@@ -1023,56 +929,44 @@ error_sliding2_mape = sum(np.abs((df_sliding['N_conf_input']-df_sliding['N_conf'
 error_sliding2 = sum(np.abs(df_sliding['N_conf_input']-df_sliding['N_conf']))/len(df_sliding)
 error_sliding2_sq = np.square((df_sliding['N_conf_input']-df_sliding['N_conf']))
 error_sliding2_sqrt = np.sqrt(error_sliding2_sq.astype(float))
-
 #mean
 error_sliding2_sq = sum(error_sliding2_sq)/len(error_sliding2_sq)
 error_sliding2_sqrt = sum(error_sliding2_sqrt)/len(error_sliding2_sqrt)
-
 lstm_sir_n_conf = df_sliding['N_conf_input']
 
 #compute additional metrics:
-
 error_sliding3 = sum(np.abs(df_sliding['zt1']-df_sliding['N_conf']))/len(df_sliding)
 error_sliding3_mape = sum(np.abs((df_sliding['zt1']-df_sliding['N_conf'])/df_sliding['N_conf']))    /    len(df_sliding)
 error_sliding3_sq = np.square((df_sliding['zt1']-df_sliding['N_conf']))
 error_sliding3_sqrt = np.sqrt(error_sliding3_sq.astype(float))
-#mean 
 error_sliding3_sq = sum(error_sliding3_sq)/len(error_sliding3_sq)
 error_sliding3_sqrt = sum(error_sliding3_sqrt)/len(error_sliding3_sqrt)
-
-
 #error estimate
 error_sliding4_abs = np.abs(df_sliding['R_DA']-df_sliding['N_conf'])
 error_sliding4 = sum(np.abs(df_sliding['R_DA']-df_sliding['N_conf']))/len(df_sliding)
 error_sliding4_mape = sum(np.abs((df_sliding['R_DA']-df_sliding['N_conf'])/df_sliding['N_conf']))    /    len(df_sliding)
 error_sliding4_sq = np.square((df_sliding['R_DA']-df_sliding['N_conf']))
 error_sliding4_sqrt = np.sqrt(error_sliding4_sq.astype(float))
-#mean 
 error_sliding4_sq = sum(error_sliding4_sq)/len(error_sliding4_sq)
 error_sliding4_sqrt = sum(error_sliding4_sqrt)/len(error_sliding4_sqrt)
-
 #Model Average1
 error_sliding5 = sum(np.abs(df_sliding['M_avg1']-df_sliding['N_conf']))/len(df_sliding)
 error_sliding5_mape = sum(np.abs((df_sliding['M_avg1']-df_sliding['N_conf'])/df_sliding['N_conf']))    /    len(df_sliding)
 error_sliding5_sq = np.square((df_sliding['M_avg1']-df_sliding['N_conf']))
 error_sliding5_sqrt = np.sqrt(error_sliding5_sq.astype(float))
-#mean 
 error_sliding5_sq = sum(error_sliding5_sq)/len(error_sliding5_sq)
 error_sliding5_sqrt = sum(error_sliding5_sqrt)/len(error_sliding5_sqrt)
-
 #Model Average2
 error_sliding6 = sum(np.abs(df_sliding['M_avg2']-df_sliding['N_conf']))/len(df_sliding)
 error_sliding6_mape = sum(np.abs((df_sliding['M_avg2']-df_sliding['N_conf'])/df_sliding['N_conf']))    /    len(df_sliding)
 error_sliding6_sq = np.square((df_sliding['M_avg2']-df_sliding['N_conf']))
 error_sliding6_sqrt = np.sqrt(error_sliding6_sq.astype(float))
-#mean 
 error_sliding6_sq = sum(error_sliding6_sq)/len(error_sliding6_sq)
 error_sliding6_sqrt = sum(error_sliding6_sqrt)/len(error_sliding6_sqrt)
 
 #Dynamic Model averaging:
-#model 2 and 4, which is SIRLSTM and R_DA
 sumerror = error_sliding2_abs+error_sliding4_abs # total error
-ew1 = error_sliding2_abs/sumerror #LSTM constribution to error #give this weight to forecast of R_DA now, to give R_DA more weight
+ew1 = error_sliding2_abs/sumerror #LSTM constribution to error 
 ew2 = error_sliding4_abs/sumerror  #R_DA contribution to error
 
 #print(w1,w2)
@@ -1081,15 +975,12 @@ m_avg = df_sliding['R_DA']*ew1 + df_sliding['N_conf_input']*ew2
 #Model Average2
 error_sliding7 = sum(np.abs(m_avg-df_sliding['N_conf']))/len(df_sliding)
 error_sliding7_mape = sum(np.abs((m_avg-df_sliding['N_conf'])/df_sliding['N_conf']))    /    len(df_sliding)
-
 error_sliding7_sq = np.square((m_avg-df_sliding['N_conf']))
 error_sliding7_sqrt = np.sqrt(error_sliding7_sq.astype(float))
-#mean 
 error_sliding7_sq = sum(error_sliding7_sq)/len(error_sliding7_sq)
 error_sliding7_sqrt = sum(error_sliding7_sqrt)/len(error_sliding7_sqrt)
 
 # Compare all Approaches
-
 if 0:
     plottil = 50
     plt.title(country_selector)
